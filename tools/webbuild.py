@@ -178,15 +178,46 @@ html,body{margin:0;height:100%}
 body{
   font-family:var(--serif); color:var(--ink); background:#f4f3f0;
   -webkit-font-smoothing:antialiased; position:relative; overflow-x:hidden;
+  -webkit-text-size-adjust:100%; text-size-adjust:100%;
 }
 
 /* ---------- the field ----------
    One layer per book, all stacked, all transparent until that book is asked
    for. Hovering a tile does not swap an image; it fades one layer up and the
-   others down, so the whole page takes on the book's weather. */
-.field{position:fixed;inset:0;z-index:0;opacity:0;transition:opacity .55s ease;pointer-events:none}
-.field.base{opacity:1}
+   others down, so the whole page takes on the book's weather.
+
+   Every layer is translucent and mixed from the book's own accent, so the
+   wash tints whatever the page is already standing on. That is what makes it
+   survive dark mode: an opaque near-white gradient here would flash the whole
+   page white the moment a pointer crossed a tile. Nothing is opaque, so
+   nothing can. --w1..--wg are the alphas, lifted in dark mode because a tint
+   has to work harder against a dark ground to be seen at all. */
+:root{--w1:.30;--w2:.20;--w3:.075;--wg:.07;--wt:.11}
+.field{position:fixed;inset:0;z-index:0;opacity:0;transition:opacity .55s ease;pointer-events:none;
+  --fg:var(--a-rgb); --fg2:var(--a2-rgb)}
+.field.base{opacity:1;background-image:radial-gradient(120% 80% at 50% -10%,rgba(90,96,110,.05) 0%,transparent 60%)}
 body[data-focus] .field.base{opacity:0}
+
+/* the three weathers a book can ask for, drawn from its own accent */
+.field[data-style="lightcone"]{
+  background-image:
+    radial-gradient(125% 95% at 50% 108%, rgba(var(--fg),var(--w1)) 0%, rgba(var(--fg),calc(var(--w1)*.28)) 40%, transparent 68%),
+    radial-gradient(120% 90% at 50% -8%, rgba(var(--fg2),var(--w2)) 0%, transparent 62%),
+    linear-gradient(90deg, rgba(var(--fg),var(--w3)) 1px, transparent 1px),
+    linear-gradient(rgba(var(--fg),var(--w3)) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(var(--fg),var(--wg)), rgba(var(--fg2),calc(var(--wg)*1.6)));
+  background-size:auto,auto,46px 46px,46px 46px,auto}
+.field[data-style="marginalia"]{
+  background-image:
+    linear-gradient(90deg,transparent 0 7.3%,rgba(var(--fg),var(--wt)) 7.3% 7.75%,transparent 7.75%),
+    repeating-linear-gradient(180deg,transparent 0 33px,rgba(var(--fg2),var(--w3)) 33px 34px),
+    radial-gradient(95% 75% at 82% -4%, rgba(var(--fg),var(--w1)) 0%, transparent 62%),
+    radial-gradient(85% 65% at 8% 104%, rgba(var(--fg2),var(--w2)) 0%, transparent 60%),
+    linear-gradient(180deg, rgba(var(--fg),var(--wg)), rgba(var(--fg2),calc(var(--wg)*1.6)))}
+.field[data-style="plain"]{
+  background-image:
+    radial-gradient(95% 75% at 70% -4%, rgba(var(--fg),var(--w1)) 0%, transparent 62%),
+    linear-gradient(180deg, rgba(var(--fg),var(--wg)), rgba(var(--fg2),calc(var(--wg)*1.6)))}
 BOOKFIELDS
 
 .wrap{position:relative;z-index:1;max-width:64rem;margin:0 auto;padding:clamp(2.5rem,7vh,5rem) 1.4rem 4rem}
@@ -208,6 +239,7 @@ h1{font-size:clamp(2.1rem,5.2vw,3.3rem);line-height:1.04;letter-spacing:-.025em;
   text-decoration:none;color:inherit;
   background:rgba(255,255,255,.72);
   border:1px solid var(--rule);border-radius:10px;
+  -webkit-backdrop-filter:saturate(140%) blur(6px);
   backdrop-filter:saturate(140%) blur(6px);
   transition:transform .3s ease,box-shadow .3s ease,opacity .4s ease,
              border-color .3s ease,background .4s ease;
@@ -243,10 +275,30 @@ footer a{color:inherit}
   .field,.book{transition:none}
   .book:hover,.book:focus-visible{transform:none}
 }
+/* A phone cannot hover, so the wash never fires there and the tiles have to
+   carry their own colour. Apple's 44pt minimum and the home indicator are the
+   other two things a desktop layout forgets. */
+@media (pointer:coarse){
+  .book{min-height:16rem}
+  .book:active{transform:scale(.995)}
+  footer a{display:inline-flex;align-items:center;min-height:44px}
+  .wrap{padding-left:max(1.4rem,env(safe-area-inset-left));
+        padding-right:max(1.4rem,env(safe-area-inset-right));
+        padding-bottom:calc(4rem + env(safe-area-inset-bottom))}
+}
+@media (max-width:520px){
+  .shelf{gap:.9rem}
+  .book{min-height:14rem;padding:1.3rem 1.2rem 1.15rem}
+}
 @media (prefers-color-scheme:dark){
-  :root{--ink:#e6e6e2;--ink-soft:#a9adb6;--ink-faint:#787d87;--rule:#31353d}
+  :root{--ink:#e6e6e2;--ink-soft:#a9adb6;--ink-faint:#787d87;--rule:#31353d;
+        --w1:.40;--w2:.30;--w3:.11;--wg:.13;--wt:.17}
   body{background:#101216}
   .book{background:rgba(24,27,32,.66)}
+  /* the accents were chosen against paper; on a dark ground the book's lighter
+     variant is the one that reads, so the two swap roles. */
+  .field{--fg:var(--a2-rgb); --fg2:var(--a-rgb)}
+  .field.base{background-image:radial-gradient(120% 80% at 50% -10%,rgba(150,160,180,.06) 0%,transparent 60%)}
 }
 """
 
@@ -269,37 +321,29 @@ HUB_JS = """
 """
 
 
+def _rgb(hexcolour):
+    """"#a3232b" -> "163,35,43", so a stylesheet can vary the alpha on it."""
+    h = hexcolour.strip().lstrip("#")
+    if len(h) == 3:
+        h = "".join(c * 2 for c in h)
+    return "%d,%d,%d" % tuple(int(h[i:i + 2], 16) for i in (0, 2, 4))
+
+
 def _field_css(bk):
     """A background for one book, mixed from its own accent.
 
-    Kept to gradients rather than images: nothing to download, nothing to go
-    stale, and it inherits the book's colour from book.json automatically."""
+    Only the two colours are emitted here; the gradients themselves live in
+    HUB_CSS, keyed off data-style. That split is what lets the dark-mode block
+    restyle every book's weather at once instead of once per book, and it is
+    why the wash is a tint of the page rather than a sheet laid over it."""
     t = bk.theme
-    a = t.get("accent", "#333")
+    a = t.get("accent", "#333333")
     a2 = t.get("accent_dark", a)
-    style = t.get("field", "plain")
-    if style == "lightcone":
-        # two cones opening from a single event, and a faint coordinate grid
-        layers = (f"radial-gradient(120% 90% at 50% 106%, {a}22 0%, transparent 62%),"
-                  f"radial-gradient(120% 90% at 50% -6%, {a2}1f 0%, transparent 62%),"
-                  f"linear-gradient(90deg,{a}0d 1px,transparent 1px),"
-                  f"linear-gradient({a}0d 1px,transparent 1px),"
-                  f"linear-gradient(180deg,#f2f4f7,#eceff4)")
-        size = "auto,auto,44px 44px,44px 44px,auto"
-    elif style == "marginalia":
-        # ruled paper with a rubric stripe down the margin
-        layers = (f"linear-gradient(90deg,transparent 0 7.5%,{a}14 7.5% 7.9%,transparent 7.9%),"
-                  f"repeating-linear-gradient(180deg,transparent 0 33px,{a2}0f 33px 34px),"
-                  f"radial-gradient(90% 70% at 80% 0%, {a}14 0%, transparent 60%),"
-                  f"linear-gradient(180deg,#f3f1ec,#eae7e0)")
-        size = "auto,auto,auto,auto"
-    else:
-        layers = f"radial-gradient(90% 70% at 70% 0%, {a}1a 0%, transparent 60%),linear-gradient(180deg,#f4f3f0,#ecebe7)"
-        size = "auto,auto"
-    return (f'.field[data-book="{bk.slug}"]{{background-image:{layers};background-size:{size}}}\n'
+    return (f'.field[data-book="{bk.slug}"]{{--a-rgb:{_rgb(a)};--a2-rgb:{_rgb(a2)}}}\n'
             f'body[data-focus="{bk.slug}"] .field[data-book="{bk.slug}"]{{opacity:1}}\n'
             f'body[data-focus="{bk.slug}"] .book[data-slug="{bk.slug}"]'
-            f'{{opacity:1;filter:none}}\n')
+            f'{{opacity:1;filter:none;border-color:var(--bk-accent);'
+            f'box-shadow:0 14px 44px -14px rgba(var(--a-rgb),.55)}}\n')
 
 
 def hub(results):
@@ -333,7 +377,9 @@ def hub(results):
             f'<span class="go">{go}</span></div>'
             f'</{tag}>')
 
-    field_divs = "".join(f'<div class="field" data-book="{bk.slug}"></div>' for bk, _n, _s in results)
+    field_divs = "".join(
+        f'<div class="field" data-book="{bk.slug}" '
+        f'data-style="{bk.theme.get("field", "plain")}"></div>' for bk, _n, _s in results)
     css = HUB_CSS.replace("BOOKFIELDS", "".join(fields))
 
     page = f"""<!DOCTYPE html>

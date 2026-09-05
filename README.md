@@ -18,7 +18,7 @@ deriving what it uses, and marking what it does not.**
 | | | |
 |---|---|---|
 | **[From Newton to M-Theory](books/newton-to-mtheory/)** | Special relativity through to strings, derived rather than quoted. | 37 of 76 chapters |
-| **[The Long Argument](books/the-long-argument/)** | Eight philosophical questions that opened early and never closed, read as conversations across centuries. | index built, 8 planned |
+| **[The Long Argument](books/the-long-argument/)** | Eight philosophical questions that opened early and never closed, read as conversations across centuries. | index and 117 studies built, 8 chapters planned |
 
 Each book keeps its own conventions, its own register of what it has taken on trust, and its own
 plans and review reports, because those are properties of a book rather than of the machinery. What

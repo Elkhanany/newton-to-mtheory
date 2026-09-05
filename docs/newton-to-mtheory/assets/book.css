@@ -68,12 +68,13 @@ body{
   line-height:1.68;
   -webkit-font-smoothing:antialiased;
   text-rendering:optimizeLegibility;
+  -webkit-text-size-adjust:100%; text-size-adjust:100%;
 }
 
 /* ---------- layout ---------- */
 .wrap{display:flex;gap:0;align-items:flex-start;max-width:82rem;margin:0 auto}
 .sidebar{
-  position:sticky;top:0;flex:0 0 16rem;height:100vh;overflow-y:auto;
+  position:sticky;top:0;flex:0 0 16rem;height:100vh;height:100dvh;overflow-y:auto;
   padding:2rem 1.25rem 3rem;border-right:1px solid var(--rule);
   font-family:var(--sans);font-size:.8rem;line-height:1.45;background:var(--bg-alt);
 }
@@ -432,13 +433,14 @@ h3 a{text-decoration:none}
 .topnav{position:sticky;top:0;z-index:40;display:flex;align-items:center;
   justify-content:space-between;gap:1rem;padding:.62rem 1.4rem;
   background:color-mix(in srgb,var(--bg) 88%,transparent);
+  -webkit-backdrop-filter:saturate(160%) blur(10px);
   backdrop-filter:saturate(160%) blur(10px);
   border-bottom:1px solid var(--rule);font-family:var(--sans);font-size:.82rem}
 .topnav .brand{font-weight:700;letter-spacing:.02em;color:var(--ink);text-decoration:none}
 .topnav-links{display:flex;gap:1.4rem}
 .topnav-links a{color:var(--ink-soft);text-decoration:none;font-weight:550}
 .topnav-links a:hover{color:var(--accent)}
-.topnav+.wrap .sidebar{top:2.6rem;height:calc(100vh - 2.6rem)}
+.topnav+.wrap .sidebar{top:2.6rem;height:calc(100vh - 2.6rem);height:calc(100dvh - 2.6rem)}
 /* the theme toggle is position:fixed and would otherwise sit on top of the last nav link */
 .topnav{padding-right:6rem}
 @media (max-width:760px){
@@ -449,3 +451,55 @@ h3 a{text-decoration:none}
    topnav was holding open for that toggle goes back to the links. */
 @media (max-width:1000px){html.has-mnav .topnav{padding-right:1.4rem}}
 @media (max-width:760px){html.has-mnav .topnav{padding-right:.8rem}}
+
+
+/* ---------- narrow viewports, including a phone turned sideways ----------
+   These were written for phones and gated at 760px, which is where the bug
+   was: an iPhone in landscape is 844 to 932 CSS pixels, so rotating the
+   device switched off the very rules that keep a wide equation or a wide
+   table reachable. ch4-7's 858px table was clipped with no way to scroll it.
+   The guards now cover a rotated phone and a portrait tablet, and the
+   equation scroller is unconditional because it costs nothing when the
+   maths already fits. */
+.katex-display{overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch}
+@media (max-width:1000px){
+  html,body{overflow-x:hidden;max-width:100%}
+  .wrap,.main,.col{max-width:100%}
+  img,canvas,svg,pre{max-width:100%}
+  table{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch;max-width:100%}
+  /* .col clips its overflow, so anything wider than the column was cut rather
+     than scrolled: at 375px an interactive figure lost about 214px off its
+     right edge, readouts included, with nothing to say so. Letting the figure
+     scroll inside itself keeps the clip on the page and off the content. */
+  figure.fig{overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch}
+}
+@media (max-width:560px){
+  /* the readouts carry an inline min-width to stop the numbers jittering as a
+     slider moves; on a phone that guarantee is worth less than the words */
+  .ctrl output,.ctrls output{min-width:0!important}
+}
+
+/* ---------- touch targets ----------
+   Apple asks for 44pt. The top bar's links were 12 to 20 pixels tall, which is
+   a coin toss on a phone. Only pointer:coarse is touched, so the desktop bar
+   keeps its proportions. */
+@media (pointer:coarse){
+  .topnav{padding-top:.35rem;padding-bottom:.35rem}
+  .topnav .brand,.topnav-links a{display:inline-flex;align-items:center;min-height:44px}
+  .topnav-links{gap:1.1rem}
+  /* the mobile navigation drawer's own footer, and the controls under a figure */
+  .mn-foot a,.mn-foot button{display:inline-flex;align-items:center;min-height:44px}
+  .ctrl button,.ctrls button{min-height:44px;padding-top:.4rem;padding-bottom:.4rem}
+  /* a 16px slider is hard to catch with a thumb; the track keeps its look */
+  .ctrl input[type=range]{height:44px;background:transparent}
+  .ctrl input[type=range]::-webkit-slider-runnable-track{height:4px}
+  .ctrl input[type=range]::-webkit-slider-thumb{margin-top:-8px}
+  /* the chapter list is navigation, not prose: give each row a tappable height */
+  .clist li{min-height:44px;display:flex;align-items:baseline;padding-top:.3rem;padding-bottom:.3rem}
+  .clist li>span>a{display:inline-block;padding:.35rem 0}
+}
+/* Inline links inside running prose are left at their natural size on purpose:
+   padding them to 44px would open gaps between the lines of a paragraph, and
+   the 44pt guidance is about standalone controls rather than words in a
+   sentence. The chapter list, the navigation drawer and the figure controls
+   are handled above; a cross-reference mid-sentence is not. */
